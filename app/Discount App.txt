@@ -1,0 +1,336 @@
+import React, { useState } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Alert,
+  FlatList,
+} from "react-native";
+
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+
+import Screen from "./app/components/Screen";
+
+import { ListItem } from "react-native-elements";
+
+import { createStackNavigator } from "@react-navigation/stack";
+import { NavigationContainer, useNavigation } from "@react-navigation/native";
+import AppTextInput from "./app/components/AppTextInput";
+import AppText from "./app/components/AppText";
+import SavetoHistory from "./app/components/SavetoHistory";
+import IconButton from "./app/components/IconButton";
+import ErrorMessage from "./app/components/ErrorMessage";
+import colors from "./app/config/colors";
+
+// const Link = () => {
+//   const navigation = useNavigation();
+//   return (
+//     <TouchableOpacity
+//       onPress={() => navigation.navigate("HistoryScreen", { item: history })}
+//     >
+//       <View style={styles.icon}>
+//         <MaterialCommunityIcons name="history" size={40} color="white" />
+//       </View>
+//     </TouchableOpacity>
+//   );
+// };
+// const initialHistory = [
+//   {
+//     id: 1,
+//     original: 100,
+//     discountPercentage: 10,
+//     final: 90,
+//   },
+// ];
+function HomeScreen({ route, navigation }) {
+  // const [backHistory, setBackHistory] = useState(recievedHhistory)
+
+  const [originalPrice, setOriginalPrice] = useState(0);
+  const [priceError, setPriceError] = useState("");
+
+  const [discount, setDiscount] = useState(0);
+  const [discountError, setDiscountError] = useState("");
+
+  const [saving, setSaving] = useState(0);
+
+  const [finalPrice, setFinalPrice] = useState(0);
+
+  const [history, setHistory] = useState([]);
+
+  const [saveButton, setSaveButton] = useState(true);
+
+  //Updating List
+  // const recievedHhistory = route.params?.item;
+  // setHistory(recievedHhistory);
+
+  React.useEffect(() => {
+    if (route.params?.post) {
+      // const recievedHhistory = route.params?.item;
+      setHistory(route.params?.item);
+    }
+  }, [route.params?.post]);
+
+  console.log("Recieved History", route.params?.item);
+
+  const changePrice = (text) => {
+    setSaveButton(true);
+    if (text > 0) {
+      setOriginalPrice(text);
+
+      const save = text - (text - text * (discount / 100));
+      setSaving(save.toFixed(2));
+
+      const final = text - save;
+      setFinalPrice(final.toFixed(2));
+
+      setPriceError("");
+    } else {
+      setOriginalPrice(0);
+      setSaving(0);
+      setFinalPrice(0);
+      setPriceError("Price can't be Empty/Zero");
+    }
+  };
+  const changeDiscount = (text) => {
+    setSaveButton(true);
+    if (text > 0 && text < 100) {
+      setDiscount(text);
+
+      const final = originalPrice - originalPrice * (text / 100);
+      setFinalPrice(final.toFixed(2));
+
+      const save = originalPrice - final;
+      setSaving(save.toFixed(2));
+      setDiscountError("");
+    } else {
+      setDiscount(0);
+      setFinalPrice(0);
+      setSaving(0);
+      setDiscountError("Discount must be between 0-100");
+    }
+  };
+  const saveItem = (orig, disc, fin) => {
+    var item = {};
+    item["id"] = Math.floor(Math.random() * 10000) + 1;
+    item["original"] = orig;
+    item["discountPercentage"] = disc;
+    item["final"] = fin;
+    const array = history;
+    array.push(item);
+    setHistory(array);
+  };
+  const handleSave = () => {
+    if (saveButton) {
+      if (originalPrice == 0) {
+        Alert.alert("Save", "Please Enter Price !", [{ text: "OK!" }]);
+      } else if (discount == 0) {
+        Alert.alert("Save", "Please Enter Discount % !", [{ text: "OK!" }]);
+      } else {
+        setHistory(() => saveItem(originalPrice, discount, finalPrice));
+
+        // console.log("***********New History***********\n", history);
+        setSaveButton(false);
+        Alert.alert("Saved !", "Item Saved Successfully !", [{ text: "OK!" }]);
+      }
+    } else {
+      Alert.alert("Already Exists !", "Item Already Exists !", [
+        { text: "OK!" },
+      ]);
+    }
+  };
+  const handleSend = () => {
+    console.log("***********Sending History***********\n", history);
+    navigation.navigate("HistoryScreen", { item: history });
+  };
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity onPress={() => handleSend()}>
+          <View style={styles.icon}>
+            <MaterialCommunityIcons name="history" size={40} color="white" />
+          </View>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
+  return (
+    <Screen>
+      <View style={styles.homeContainer}>
+        <View style={styles.inputContainer}>
+          <AppTextInput
+            iconName="currency-usd-circle-outline"
+            placeholder="Enter Price"
+            onChangeText={(price) => changePrice(price)}
+          />
+          <ErrorMessage error={priceError} />
+          <AppTextInput
+            iconName="percent-outline"
+            placeholder="Enter Discount Percentage"
+            onChangeText={(discount) => changeDiscount(discount)}
+          />
+          <ErrorMessage error={discountError} />
+        </View>
+        <View style={styles.finalPrice}>
+          <AppText style={{ fontSize: 25 }}>Final Price : </AppText>
+          <AppText style={{ fontSize: 25 }}>{finalPrice}</AppText>
+        </View>
+        <View style={styles.savedPrice}>
+          <AppText>You Save : </AppText>
+          <AppText style={{ color: "green" }}>{saving}</AppText>
+        </View>
+        <SavetoHistory onPress={() => handleSave()} />
+      </View>
+    </Screen>
+  );
+}
+
+function HistoryScreen({ route, navigation }) {
+  // const recievedHhistory = route.params?.item;
+  const [gainedHistory, setGainedHistory] = useState([]);
+  React.useEffect(() => {
+    if (route.params?.item) {
+      setGainedHistory(route.params?.item);
+    }
+  }, [route.params?.item]);
+
+  const handleDelete = (deleteItem) => {
+    newHistory = gainedHistory.filter((h) => h.id !== deleteItem.id);
+    setGainedHistory(newHistory);
+    // console.log("***********Updated History***********\n", newHistory);
+  };
+
+  const handleBack = () => {
+    console.log("***********Back History***********\n", gainedHistory);
+    // navigation.navigate("HomeScreen", { item: gainedHistory });
+
+    // Pass and merge params back to home screen
+    navigation.navigate({
+      name: "HomeScreen",
+      params: { item: gainedHistory },
+    });
+  };
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity onPress={() => handleBack()}>
+          <View style={styles.icon}>
+            <MaterialCommunityIcons
+              name="keyboard-backspace"
+              size={40}
+              color="white"
+            />
+          </View>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
+  return (
+    <Screen>
+      <FlatList
+        data={gainedHistory}
+        keyExtractor={(history) => history.id.toString()}
+        renderItem={({ item }) => (
+          <ListItem key={item.id} bottomDivider>
+            <ListItem.Content>
+              <View style={styles.listContainer}>
+                <ListItem.Title style={styles.listTitle}>
+                  {item.original}
+                </ListItem.Title>
+                <ListItem.Subtitle style={styles.listDiscount}>
+                  -{item.discountPercentage}%
+                </ListItem.Subtitle>
+                <ListItem.Subtitle style={styles.listSubTitle}>
+                  {item.final}
+                </ListItem.Subtitle>
+                <TouchableOpacity onPress={() => handleDelete(item)}>
+                  <View style={styles.icon}>
+                    <MaterialCommunityIcons
+                      name="trash-can-outline"
+                      size={35}
+                      color={colors.danger}
+                    />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </ListItem.Content>
+          </ListItem>
+        )}
+      />
+    </Screen>
+  );
+}
+
+//Navigation
+const Stack = createStackNavigator();
+const StackNavigation = () => (
+  <Stack.Navigator
+    initialRouteName="HomeScreen"
+    screenOptions={{
+      headerStyle: { backgroundColor: "dodgerblue" },
+      headerTintColor: "white",
+    }}
+  >
+    <Stack.Screen
+      name="HomeScreen"
+      component={HomeScreen}
+      options={{
+        title: "Discont App",
+        headerStyle: { backgroundColor: "dodgerblue" },
+        headerTintColor: "white",
+        // headerRight: () => <Link iconName="history" screen="HistoryScreen" />,
+      }}
+    />
+    <Stack.Screen
+      name="HistoryScreen"
+      component={HistoryScreen}
+      options={({ route }) => ({
+        title: "History",
+        headerRight: () => (
+          <IconButton
+            iconName="notification-clear-all"
+            color="white"
+            onPress={() => console.log("Clear All ...")}
+          />
+        ),
+      })}
+    />
+  </Stack.Navigator>
+);
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <StackNavigation />
+    </NavigationContainer>
+  );
+}
+const styles = StyleSheet.create({
+  icon: {
+    padding: 10,
+  },
+  homeContainer: {},
+  inputContainer: {},
+  listContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  listTitle: { flex: 1, fontSize: 25, alignSelf: "center" },
+  listSubTitle: { flex: 1, fontSize: 25, alignSelf: "center" },
+  listDiscount: {
+    flex: 1,
+    color: "green",
+    fontSize: 25,
+    alignSelf: "center",
+  },
+  savedPrice: {
+    flexDirection: "row",
+    marginVertical: 10,
+    marginLeft: 20,
+  },
+  finalPrice: {
+    flexDirection: "row",
+    marginVertical: 10,
+    marginLeft: 20,
+  },
+});
